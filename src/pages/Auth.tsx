@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
+import { Mail, Lock, ArrowLeft, Loader2, Eye, EyeOff, CheckCircle, RefreshCw } from "lucide-react";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { GameButton } from "@/components/ui/GameButton";
@@ -14,23 +14,34 @@ const passwordSchema = z.string().min(6, "Password must be at least 6 characters
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, profile, signUp, signIn, loading } = useAuth();
+  const { user, profile, signUp, signIn, loading, emailConfirmationPending, resendConfirmationEmail } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmationScreen, setShowConfirmationScreen] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
-      if (profile) {
-        navigate("/play");
-      } else {
-        navigate("/setup-username");
+      // User is logged in and email is confirmed
+      if (user.email_confirmed_at) {
+        if (profile) {
+          navigate("/play");
+        } else {
+          navigate("/setup-username");
+        }
       }
     }
   }, [user, profile, loading, navigate]);
+
+  useEffect(() => {
+    if (emailConfirmationPending) {
+      setShowConfirmationScreen(true);
+    }
+  }, [emailConfirmationPending]);
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -59,10 +70,19 @@ const Auth = () => {
     if (isLogin) {
       await signIn(email, password);
     } else {
-      await signUp(email, password);
+      const result = await signUp(email, password);
+      if (result.emailConfirmationRequired) {
+        setShowConfirmationScreen(true);
+      }
     }
     
     setIsSubmitting(false);
+  };
+
+  const handleResendEmail = async () => {
+    setResendingEmail(true);
+    await resendConfirmationEmail(email);
+    setResendingEmail(false);
   };
 
   if (loading) {
@@ -73,12 +93,91 @@ const Auth = () => {
     );
   }
 
+  // Email confirmation pending screen
+  if (showConfirmationScreen) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-8">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-uno-green/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-uno-blue/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
+        </div>
+
+        <FloatingCards />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 w-full max-w-md"
+        >
+          <div className="flex justify-center mb-6">
+            <img src={unogoLogo} alt="UNOGO" className="w-40" />
+          </div>
+
+          <GlassCard className="text-center" hover={false}>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", duration: 0.6 }}
+              className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-uno-green to-uno-blue flex items-center justify-center"
+            >
+              <Mail className="w-10 h-10 text-white" />
+            </motion.div>
+
+            <h2 className="text-2xl font-bold mb-2 font-nunito">Check Your Email!</h2>
+            <p className="text-muted-foreground mb-6 font-nunito">
+              We've sent a confirmation link to:
+            </p>
+            <p className="text-accent font-bold text-lg mb-6 font-nunito">{email}</p>
+
+            <div className="bg-muted rounded-xl p-4 mb-6">
+              <div className="flex items-start gap-3 text-left">
+                <CheckCircle className="w-5 h-5 text-uno-green mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold font-nunito">Click the link in your email</p>
+                  <p className="text-muted-foreground text-sm font-nunito">
+                    This confirms your account and lets you start playing!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <GameButton
+                variant="green"
+                onClick={handleResendEmail}
+                disabled={resendingEmail}
+                className="w-full"
+                icon={resendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              >
+                {resendingEmail ? "Sending..." : "Resend Email"}
+              </GameButton>
+
+              <button
+                onClick={() => {
+                  setShowConfirmationScreen(false);
+                  setIsLogin(true);
+                }}
+                className="w-full py-3 text-muted-foreground hover:text-foreground transition-colors font-nunito font-semibold"
+              >
+                Back to Login
+              </button>
+            </div>
+
+            <p className="text-muted-foreground text-xs mt-6 font-nunito">
+              Didn't receive the email? Check your spam folder or try resending.
+            </p>
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-4 py-8">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-uno-red/20 rounded-full blur-3xl animate-glow-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-uno-blue/20 rounded-full blur-3xl animate-glow-pulse" style={{ animationDelay: "1s" }} />
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-uno-red/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-uno-blue/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />
       </div>
 
       <FloatingCards />
@@ -145,6 +244,14 @@ const Auth = () => {
               <h2 className="text-2xl font-bold text-center mb-4 font-nunito">
                 {isLogin ? "Welcome Back!" : "Join UNOGO"}
               </h2>
+
+              {!isLogin && (
+                <div className="bg-muted/50 rounded-xl p-3 mb-4">
+                  <p className="text-sm text-muted-foreground font-nunito text-center">
+                    📧 You'll need to verify your email before playing
+                  </p>
+                </div>
+              )}
 
               {/* Email */}
               <div>
