@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Bot, Users, Globe, ArrowLeft } from "lucide-react";
+import { Bot, Users, Globe, ArrowLeft, Trophy, LogIn, User, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { GameButton } from "@/components/ui/GameButton";
 import { GlassCard } from "@/components/ui/GlassCard";
 import unogoLogo from "@/assets/unogo-logo.png";
@@ -13,6 +14,8 @@ const gameModes = [
     icon: Bot,
     variant: "green" as const,
     xp: "+100 XP per win",
+    requiresAuth: false,
+    route: "/game/ai",
   },
   {
     id: "friends",
@@ -21,6 +24,8 @@ const gameModes = [
     icon: Users,
     variant: "yellow" as const,
     xp: "+200 XP per win",
+    requiresAuth: true,
+    route: "/game/friends",
   },
   {
     id: "worldwide",
@@ -29,15 +34,21 @@ const gameModes = [
     icon: Globe,
     variant: "blue" as const,
     xp: "+500 XP per win",
+    requiresAuth: true,
+    route: "/game/worldwide",
   },
 ];
 
 const Play = () => {
   const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
 
-  const handleModeSelect = (modeId: string) => {
-    // For now, show toast - will implement actual game logic later
-    console.log(`Selected mode: ${modeId}`);
+  const handleModeSelect = (mode: typeof gameModes[0]) => {
+    if (mode.requiresAuth && !user) {
+      navigate("/auth");
+      return;
+    }
+    navigate(mode.route);
   };
 
   return (
@@ -54,13 +65,44 @@ const Play = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 font-nunito font-semibold"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Home
-        </button>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-nunito font-semibold"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Home
+          </button>
+
+          <div className="flex items-center gap-4">
+            {user && profile ? (
+              <>
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-nunito font-semibold"
+                >
+                  <User className="w-5 h-5" />
+                  @{profile.username}
+                </button>
+                <button
+                  onClick={() => signOut()}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => navigate("/auth")}
+                className="flex items-center gap-2 text-uno-yellow hover:text-yellow-300 transition-colors font-nunito font-semibold"
+              >
+                <LogIn className="w-5 h-5" />
+                Sign In
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Logo */}
         <div className="flex justify-center mb-8">
@@ -73,6 +115,31 @@ const Play = () => {
             transition={{ duration: 0.5 }}
           />
         </div>
+
+        {/* User stats (if logged in) */}
+        {profile && (
+          <motion.div
+            className="flex justify-center gap-6 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <GlassCard className="flex items-center gap-3 py-3 px-5" hover={false}>
+              <Trophy className="w-5 h-5 text-uno-yellow" />
+              <div>
+                <p className="text-xl font-bold font-nunito">{profile.xp.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground font-nunito">Total XP</p>
+              </div>
+            </GlassCard>
+            <GlassCard className="flex items-center gap-3 py-3 px-5" hover={false}>
+              <div className="text-uno-green font-bold text-xl">{profile.wins}</div>
+              <div>
+                <p className="text-sm font-nunito">Wins</p>
+                <p className="text-xs text-muted-foreground font-nunito">{profile.games_played} games</p>
+              </div>
+            </GlassCard>
+          </motion.div>
+        )}
 
         {/* Title */}
         <motion.h1
@@ -135,27 +202,46 @@ const Play = () => {
 
             <GameButton
               variant={mode.variant}
-              onClick={() => handleModeSelect(mode.id)}
+              onClick={() => handleModeSelect(mode)}
               className="w-full"
             >
-              Play Now
+              {mode.requiresAuth && !user ? "Sign In to Play" : "Play Now"}
             </GameButton>
           </GlassCard>
         ))}
       </div>
 
-      {/* Info notice */}
+      {/* Leaderboard link */}
       <motion.div
-        className="relative z-10 mt-10 glass rounded-xl px-6 py-4 max-w-lg text-center"
+        className="relative z-10 mt-10"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.6 }}
       >
-        <p className="text-muted-foreground text-sm font-nunito">
-          🎮 <strong className="text-foreground">Demo Mode:</strong> Play with AI is available without login.
-          Sign up to unlock Friends & Worldwide modes!
-        </p>
+        <GameButton
+          variant="rainbow"
+          size="lg"
+          onClick={() => navigate("/leaderboard")}
+          icon={<Trophy className="w-5 h-5" />}
+        >
+          View Leaderboard
+        </GameButton>
       </motion.div>
+
+      {/* Info notice */}
+      {!user && (
+        <motion.div
+          className="relative z-10 mt-6 glass rounded-xl px-6 py-4 max-w-lg text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <p className="text-muted-foreground text-sm font-nunito">
+            🎮 <strong className="text-foreground">Demo Mode:</strong> Play with AI is available without login.
+            Sign up to unlock Friends & Worldwide modes!
+          </p>
+        </motion.div>
+      )}
     </div>
   );
 };
