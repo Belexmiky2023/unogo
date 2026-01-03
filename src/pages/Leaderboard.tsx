@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trophy, Medal, Star, User } from "lucide-react";
+import { ArrowLeft, Trophy, Medal, Star, User, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
@@ -15,6 +15,7 @@ interface LeaderboardEntry {
   xp: number;
   wins: number;
   games_played: number;
+  is_verified: boolean;
 }
 
 const Leaderboard = () => {
@@ -28,7 +29,7 @@ const Leaderboard = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, username, display_name, avatar_url, xp, wins, games_played")
+        .select("id, username, display_name, avatar_url, xp, wins, games_played, is_verified")
         .order(sortBy, { ascending: false })
         .limit(100);
 
@@ -176,9 +177,14 @@ const Leaderboard = () => {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold font-nunito truncate">
-                      @{player.username}
-                    </p>
+                    <div className="flex items-center gap-1">
+                      <p className="font-bold font-nunito truncate">
+                        @{player.username}
+                      </p>
+                      {player.is_verified && (
+                        <BadgeCheck className="w-4 h-4 text-uno-blue flex-shrink-0" />
+                      )}
+                    </div>
                     {player.display_name && (
                       <p className="text-muted-foreground text-sm truncate font-nunito">
                         {player.display_name}

@@ -14,6 +14,7 @@ import Leaderboard from "./pages/Leaderboard";
 import GameAI from "./pages/GameAI";
 import GameFriends from "./pages/GameFriends";
 import GameWorldwide from "./pages/GameWorldwide";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/game/ai" element={<GameAI />} />
             <Route path="/game/friends" element={<GameFriends />} />
             <Route path="/game/worldwide" element={<GameWorldwide />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      friends: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friends_friend_id_fkey"
+            columns: ["friend_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friends_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_invites: {
         Row: {
           created_at: string
@@ -167,13 +209,42 @@ export type Database = {
           },
         ]
       }
+      online_status: {
+        Row: {
+          is_online: boolean
+          last_seen: string
+          profile_id: string
+        }
+        Insert: {
+          is_online?: boolean
+          last_seen?: string
+          profile_id: string
+        }
+        Update: {
+          is_online?: boolean
+          last_seen?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_status_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          ban_reason: string | null
           created_at: string
           display_name: string | null
           games_played: number
           id: string
+          is_banned: boolean
+          is_verified: boolean
           losses: number
           updated_at: string
           user_id: string
@@ -183,10 +254,13 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          ban_reason?: string | null
           created_at?: string
           display_name?: string | null
           games_played?: number
           id?: string
+          is_banned?: boolean
+          is_verified?: boolean
           losses?: number
           updated_at?: string
           user_id: string
@@ -196,10 +270,13 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          ban_reason?: string | null
           created_at?: string
           display_name?: string | null
           games_played?: number
           id?: string
+          is_banned?: boolean
+          is_verified?: boolean
           losses?: number
           updated_at?: string
           user_id?: string
@@ -224,6 +301,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -233,13 +331,20 @@ export type Database = {
         Args: { base_name: string }
         Returns: string[]
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_username_available: {
         Args: { check_username: string }
         Returns: boolean
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -366,6 +471,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
