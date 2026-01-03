@@ -9,6 +9,7 @@ import { GameButton } from "@/components/ui/GameButton";
 import { GameLobby } from "@/components/game/GameLobby";
 import { MultiplayerBoard } from "@/components/game/MultiplayerBoard";
 import { InviteNotification } from "@/components/game/InviteNotification";
+import { GameChat } from "@/components/game/GameChat";
 import unogoLogo from "@/assets/unogo-logo.png";
 
 const GameFriends = () => {
@@ -155,11 +156,14 @@ const GameFriends = () => {
       </div>
 
       {view === 'playing' && currentGame ? (
-        <MultiplayerBoard
-          game={currentGame}
-          onPlayCard={playCard}
-          onDrawCard={drawCard}
-        />
+        <>
+          <MultiplayerBoard
+            game={currentGame}
+            onPlayCard={playCard}
+            onDrawCard={drawCard}
+          />
+          <GameChat gameId={currentGame.id} />
+        </>
       ) : (
         <div className="relative z-10 py-8 px-4">
           {/* Header */}

@@ -7,6 +7,8 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
 import { FriendsList } from "@/components/friends/FriendsList";
+import { LevelProgress } from "@/components/profile/LevelProgress";
+import { ThemeSelector } from "@/components/profile/ThemeSelector";
 import unogoLogo from "@/assets/unogo-logo.png";
 
 const Profile = () => {
@@ -32,7 +34,6 @@ const Profile = () => {
     ? Math.round((profile.wins / profile.games_played) * 100) 
     : 0;
 
-  // Type assertion for profile with new fields
   const extendedProfile = profile as typeof profile & { is_verified?: boolean; is_banned?: boolean };
 
   return (
@@ -93,6 +94,11 @@ const Profile = () => {
           )}
         </GlassCard>
 
+        {/* Level & Rank Progress */}
+        <GlassCard className="mb-6" hover={false}>
+          <LevelProgress />
+        </GlassCard>
+
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <GlassCard className="text-center py-4" hover={false}>
@@ -123,6 +129,11 @@ const Profile = () => {
             <p className="text-muted-foreground text-sm font-nunito">Win Rate</p>
           </GlassCard>
         </div>
+
+        {/* Card Themes */}
+        <GlassCard className="mb-6" hover={false}>
+          <ThemeSelector />
+        </GlassCard>
 
         {/* Friends List */}
         <GlassCard className="mb-6" hover={false}>

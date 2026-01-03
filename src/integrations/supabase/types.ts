@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_themes: {
+        Row: {
+          id: string
+          is_default: boolean
+          name: string
+          required_xp: number
+          theme_data: Json
+        }
+        Insert: {
+          id?: string
+          is_default?: boolean
+          name: string
+          required_xp?: number
+          theme_data?: Json
+        }
+        Update: {
+          id?: string
+          is_default?: boolean
+          name?: string
+          required_xp?: number
+          theme_data?: Json
+        }
+        Relationships: []
+      }
       friends: {
         Row: {
           created_at: string
@@ -99,6 +123,45 @@ export type Database = {
           {
             foreignKeyName: "game_invites_to_profile_id_fkey"
             columns: ["to_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_messages: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          message: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          message: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          message?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_messages_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_messages_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -209,6 +272,35 @@ export type Database = {
           },
         ]
       }
+      matchmaking_queue: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matchmaking_queue_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       online_status: {
         Row: {
           is_online: boolean
@@ -246,6 +338,7 @@ export type Database = {
           is_banned: boolean
           is_verified: boolean
           losses: number
+          selected_theme: string | null
           updated_at: string
           user_id: string
           username: string
@@ -262,6 +355,7 @@ export type Database = {
           is_banned?: boolean
           is_verified?: boolean
           losses?: number
+          selected_theme?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -278,11 +372,44 @@ export type Database = {
           is_banned?: boolean
           is_verified?: boolean
           losses?: number
+          selected_theme?: string | null
           updated_at?: string
           user_id?: string
           username?: string
           wins?: number
           xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_selected_theme_fkey"
+            columns: ["selected_theme"]
+            isOneToOne: false
+            referencedRelation: "card_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ranks: {
+        Row: {
+          badge_color: string
+          icon: string
+          id: string
+          min_xp: number
+          name: string
+        }
+        Insert: {
+          badge_color: string
+          icon: string
+          id?: string
+          min_xp: number
+          name: string
+        }
+        Update: {
+          badge_color?: string
+          icon?: string
+          id?: string
+          min_xp?: number
+          name?: string
         }
         Relationships: []
       }

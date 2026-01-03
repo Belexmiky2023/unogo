@@ -5,6 +5,7 @@ import { ArrowLeft, Trophy, Medal, Star, User, BadgeCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
+import { Rank, getRank, calculateLevel, getBadgeColorClass } from "@/lib/levelSystem";
 import unogoLogo from "@/assets/unogo-logo.png";
 
 interface LeaderboardEntry {
@@ -21,8 +22,17 @@ interface LeaderboardEntry {
 const Leaderboard = () => {
   const navigate = useNavigate();
   const [players, setPlayers] = useState<LeaderboardEntry[]>([]);
+  const [ranks, setRanks] = useState<Rank[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<"xp" | "wins" | "games_played">("xp");
+
+  useEffect(() => {
+    const fetchRanks = async () => {
+      const { data } = await supabase.from('ranks').select('*').order('min_xp');
+      if (data) setRanks(data as Rank[]);
+    };
+    fetchRanks();
+  }, []);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -44,8 +54,8 @@ const Leaderboard = () => {
     fetchLeaderboard();
   }, [sortBy]);
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
+  const getPositionIcon = (position: number) => {
+    switch (position) {
       case 1:
         return <Trophy className="w-6 h-6 text-yellow-400" />;
       case 2:
@@ -53,12 +63,12 @@ const Leaderboard = () => {
       case 3:
         return <Medal className="w-6 h-6 text-amber-600" />;
       default:
-        return <span className="w-6 h-6 flex items-center justify-center text-muted-foreground font-bold">{rank}</span>;
+        return <span className="w-6 h-6 flex items-center justify-center text-muted-foreground font-bold">{position}</span>;
     }
   };
 
-  const getRankBg = (rank: number) => {
-    switch (rank) {
+  const getPositionBg = (position: number) => {
+    switch (position) {
       case 1:
         return "bg-gradient-to-r from-yellow-500/20 to-transparent border-yellow-500/30";
       case 2:
@@ -68,6 +78,11 @@ const Leaderboard = () => {
       default:
         return "bg-transparent border-border/50";
     }
+  };
+
+  const getPlayerRank = (xp: number) => {
+    if (ranks.length === 0) return null;
+    return getRank(xp, ranks);
   };
 
   return (
@@ -147,68 +162,81 @@ const Leaderboard = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {players.map((player, index) => (
-                <motion.div
-                  key={player.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`flex items-center gap-4 p-4 rounded-xl border ${getRankBg(index + 1)}`}
-                >
-                  {/* Rank */}
-                  <div className="flex-shrink-0 w-10">
-                    {getRankIcon(index + 1)}
-                  </div>
+              {players.map((player, index) => {
+                const playerRank = getPlayerRank(player.xp);
+                const level = calculateLevel(player.xp);
+                
+                return (
+                  <motion.div
+                    key={player.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`flex items-center gap-4 p-4 rounded-xl border ${getPositionBg(index + 1)}`}
+                  >
+                    {/* Position */}
+                    <div className="flex-shrink-0 w-10">
+                      {getPositionIcon(index + 1)}
+                    </div>
 
-                  {/* Avatar */}
-                  <div className="flex-shrink-0">
-                    {player.avatar_url ? (
-                      <img
-                        src={player.avatar_url}
-                        alt={player.username}
-                        className="w-12 h-12 rounded-full object-cover border-2 border-border"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                        <User className="w-6 h-6 text-muted-foreground" />
+                    {/* Avatar */}
+                    <div className="flex-shrink-0 relative">
+                      {player.avatar_url ? (
+                        <img
+                          src={player.avatar_url}
+                          alt={player.username}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-border"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                          <User className="w-6 h-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      {/* Level badge */}
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-uno-blue rounded-full flex items-center justify-center text-[10px] font-bold text-white border border-background">
+                        {level}
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <p className="font-bold font-nunito truncate">
-                        @{player.username}
-                      </p>
-                      {player.is_verified && (
-                        <BadgeCheck className="w-4 h-4 text-uno-blue flex-shrink-0" />
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <p className="font-bold font-nunito truncate">
+                          @{player.username}
+                        </p>
+                        {player.is_verified && (
+                          <BadgeCheck className="w-4 h-4 text-uno-blue flex-shrink-0" />
+                        )}
+                      </div>
+                      {/* Rank badge */}
+                      {playerRank && (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${getBadgeColorClass(playerRank.badge_color)} text-white`}>
+                            <span>{playerRank.icon}</span>
+                            <span>{playerRank.name}</span>
+                          </span>
+                        </div>
                       )}
                     </div>
-                    {player.display_name && (
-                      <p className="text-muted-foreground text-sm truncate font-nunito">
-                        {player.display_name}
-                      </p>
-                    )}
-                  </div>
 
-                  {/* Stats */}
-                  <div className="flex gap-6 text-right">
-                    <div>
-                      <p className="text-uno-yellow font-bold font-nunito">{player.xp.toLocaleString()}</p>
-                      <p className="text-muted-foreground text-xs font-nunito">XP</p>
+                    {/* Stats */}
+                    <div className="flex gap-6 text-right">
+                      <div>
+                        <p className="text-uno-yellow font-bold font-nunito">{player.xp.toLocaleString()}</p>
+                        <p className="text-muted-foreground text-xs font-nunito">XP</p>
+                      </div>
+                      <div>
+                        <p className="text-uno-green font-bold font-nunito">{player.wins}</p>
+                        <p className="text-muted-foreground text-xs font-nunito">Wins</p>
+                      </div>
+                      <div className="hidden sm:block">
+                        <p className="text-uno-blue font-bold font-nunito">{player.games_played}</p>
+                        <p className="text-muted-foreground text-xs font-nunito">Games</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-uno-green font-bold font-nunito">{player.wins}</p>
-                      <p className="text-muted-foreground text-xs font-nunito">Wins</p>
-                    </div>
-                    <div className="hidden sm:block">
-                      <p className="text-uno-blue font-bold font-nunito">{player.games_played}</p>
-                      <p className="text-muted-foreground text-xs font-nunito">Games</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </GlassCard>
