@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Crown, Search, Send, Loader2, User, Copy, Check } from "lucide-react";
+import { Users, Crown, Search, Send, Loader2, User, Copy, Check, BadgeCheck } from "lucide-react";
 import { MultiplayerGame } from "@/hooks/useMultiplayer";
 import { useAuth } from "@/hooks/useAuth";
+import { useFriends } from "@/hooks/useFriends";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
+import { FriendsList } from "@/components/friends/FriendsList";
 
 interface SearchResult {
   id: string;
@@ -156,61 +158,72 @@ export function GameLobby({ game, onStartGame, onSendInvite, isLoading }: GameLo
         </div>
       </GlassCard>
 
-      {/* Invite Players */}
+      {/* Friends List for Quick Invite */}
       {isHost && game.players.length < 4 && (
         <GlassCard hover={false}>
-          <h3 className="font-bold font-nunito mb-4 flex items-center gap-2">
-            <Search className="w-5 h-5" />
-            Invite Friends
-          </h3>
+          <FriendsList 
+            onInvite={(profileId) => {
+              onSendInvite(profileId);
+              setInvitedIds(prev => new Set(prev).add(profileId));
+            }}
+            showInviteButton={true}
+          />
           
-          <div className="relative mb-4">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
-              @
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search username..."
-              className="w-full pl-8 pr-12 py-3 bg-muted rounded-xl border-2 border-transparent focus:border-accent focus:outline-none transition-all font-nunito"
-            />
-            {isSearching && (
-              <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
+          {/* Manual Search */}
+          <div className="mt-6 pt-4 border-t border-border">
+            <h4 className="font-semibold font-nunito mb-3 text-sm flex items-center gap-2">
+              <Search className="w-4 h-4" />
+              Search All Players
+            </h4>
+            
+            <div className="relative mb-4">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
+                @
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search username..."
+                className="w-full pl-8 pr-12 py-3 bg-muted rounded-xl border-2 border-transparent focus:border-accent focus:outline-none transition-all font-nunito"
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 animate-spin text-muted-foreground" />
+              )}
+            </div>
+
+            {searchResults.length > 0 && (
+              <div className="space-y-2">
+                {searchResults.map((player) => (
+                  <div
+                    key={player.id}
+                    className="flex items-center gap-3 p-3 bg-muted rounded-xl"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-uno-yellow to-uno-green flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    
+                    <div className="flex-1">
+                      <span className="font-bold font-nunito">@{player.username}</span>
+                      <p className="text-xs text-muted-foreground font-nunito">
+                        {player.xp.toLocaleString()} XP
+                      </p>
+                    </div>
+
+                    <GameButton
+                      variant="green"
+                      size="sm"
+                      onClick={() => handleInvite(player)}
+                      disabled={invitedIds.has(player.id)}
+                      icon={invitedIds.has(player.id) ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                    >
+                      {invitedIds.has(player.id) ? "Sent" : "Invite"}
+                    </GameButton>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-
-          {searchResults.length > 0 && (
-            <div className="space-y-2">
-              {searchResults.map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center gap-3 p-3 bg-muted rounded-xl"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-uno-yellow to-uno-green flex items-center justify-center">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                  
-                  <div className="flex-1">
-                    <span className="font-bold font-nunito">@{player.username}</span>
-                    <p className="text-xs text-muted-foreground font-nunito">
-                      {player.xp.toLocaleString()} XP
-                    </p>
-                  </div>
-
-                  <GameButton
-                    variant="green"
-                    size="sm"
-                    onClick={() => handleInvite(player)}
-                    disabled={invitedIds.has(player.id)}
-                    icon={invitedIds.has(player.id) ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                  >
-                    {invitedIds.has(player.id) ? "Sent" : "Invite"}
-                  </GameButton>
-                </div>
-              ))}
-            </div>
-          )}
         </GlassCard>
       )}
 

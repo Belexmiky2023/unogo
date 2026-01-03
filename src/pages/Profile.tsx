@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Trophy, Gamepad2, Edit2, Loader2 } from "lucide-react";
+import { ArrowLeft, User, Trophy, Gamepad2, BadgeCheck, Loader2, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
+import { FriendsList } from "@/components/friends/FriendsList";
 import unogoLogo from "@/assets/unogo-logo.png";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
+  const { isAdmin } = useAdmin();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,6 +31,9 @@ const Profile = () => {
   const winRate = profile.games_played > 0 
     ? Math.round((profile.wins / profile.games_played) * 100) 
     : 0;
+
+  // Type assertion for profile with new fields
+  const extendedProfile = profile as typeof profile & { is_verified?: boolean; is_banned?: boolean };
 
   return (
     <div className="min-h-screen py-8 px-4 relative overflow-hidden">
@@ -74,9 +80,14 @@ const Profile = () => {
           </div>
 
           {/* Username */}
-          <h1 className="text-2xl font-bold mb-1 font-nunito">
-            @{profile.username}
-          </h1>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold font-nunito">
+              @{profile.username}
+            </h1>
+            {extendedProfile.is_verified && (
+              <BadgeCheck className="w-6 h-6 text-uno-blue" />
+            )}
+          </div>
           {profile.display_name && (
             <p className="text-muted-foreground font-nunito">{profile.display_name}</p>
           )}
@@ -113,6 +124,11 @@ const Profile = () => {
           </GlassCard>
         </div>
 
+        {/* Friends List */}
+        <GlassCard className="mb-6" hover={false}>
+          <FriendsList />
+        </GlassCard>
+
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <GameButton
@@ -129,6 +145,15 @@ const Profile = () => {
           >
             Leaderboard
           </GameButton>
+          {isAdmin && (
+            <GameButton
+              variant="yellow"
+              onClick={() => navigate("/admin")}
+              icon={<Shield className="w-5 h-5" />}
+            >
+              Admin
+            </GameButton>
+          )}
         </div>
       </div>
     </div>

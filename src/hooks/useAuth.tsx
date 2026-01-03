@@ -13,6 +13,9 @@ interface Profile {
   wins: number;
   losses: number;
   games_played: number;
+  is_verified: boolean;
+  is_banned: boolean;
+  ban_reason: string | null;
 }
 
 interface AuthContextType {
