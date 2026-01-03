@@ -20,10 +20,12 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  emailConfirmationPending: boolean;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null; emailConfirmationRequired: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  resendConfirmationEmail: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
@@ -66,8 +69,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state change:", event, currentSession?.user?.email);
+        
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+
+        // Clear email confirmation pending when user confirms
+        if (event === 'SIGNED_IN' && currentSession?.user?.email_confirmed_at) {
+          setEmailConfirmationPending(false);
+        }
 
         if (currentSession?.user) {
           // Defer profile fetch to avoid deadlocks
@@ -96,9 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -112,7 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           description: error.message,
           variant: "destructive",
         });
-        return { error };
+        return { error, emailConfirmationRequired: false };
+      }
+
+      // Check if email confirmation is required
+      // If user is created but not confirmed, they need to verify email
+      if (data.user && !data.user.email_confirmed_at) {
+        setEmailConfirmationPending(true);
+        toast({
+          title: "Check your email!",
+          description: "We've sent you a confirmation link. Please verify your email to continue.",
+        });
+        return { error: null, emailConfirmationRequired: true };
       }
 
       toast({
@@ -120,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Please set up your username to continue.",
       });
 
-      return { error: null };
+      return { error: null, emailConfirmationRequired: false };
     } catch (err) {
       const error = err as Error;
       toast({
@@ -128,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
-      return { error };
+      return { error, emailConfirmationRequired: false };
     }
   };
 
@@ -140,11 +161,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        toast({
-          title: "Sign in failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        // Check if the error is due to unconfirmed email
+        if (error.message.includes("Email not confirmed")) {
+          toast({
+            title: "Email not verified",
+            description: "Please check your email and click the confirmation link.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Sign in failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
         return { error };
       }
 
@@ -168,10 +198,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setEmailConfirmationPending(false);
     toast({
       title: "Signed out",
       description: "See you next time!",
     });
+  };
+
+  const resendConfirmationEmail = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Failed to resend",
+          description: error.message,
+          variant: "destructive",
+        });
+        return { error };
+      }
+
+      toast({
+        title: "Email sent!",
+        description: "Check your inbox for the confirmation link.",
+      });
+
+      return { error: null };
+    } catch (err) {
+      const error = err as Error;
+      toast({
+        title: "Failed to resend",
+        description: error.message,
+        variant: "destructive",
+      });
+      return { error };
+    }
   };
 
   return (
@@ -181,10 +248,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         loading,
+        emailConfirmationPending,
         signUp,
         signIn,
         signOut,
         refreshProfile,
+        resendConfirmationEmail,
       }}
     >
       {children}

@@ -10,7 +10,7 @@ interface GameButtonProps {
   onClick?: () => void;
   className?: string;
   icon?: ReactNode;
-  size?: "default" | "lg" | "xl";
+  size?: "sm" | "default" | "lg" | "xl";
   disabled?: boolean;
 }
 
@@ -23,6 +23,7 @@ const variantStyles: Record<GameButtonVariant, string> = {
 };
 
 const sizeStyles = {
+  sm: "px-4 py-2 text-sm",
   default: "px-6 py-3 text-lg",
   lg: "px-8 py-4 text-xl",
   xl: "px-10 py-5 text-2xl",

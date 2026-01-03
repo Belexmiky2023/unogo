@@ -1,66 +1,78 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, User, Send, X, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Loader2, Trophy, Home } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { useMultiplayer } from "@/hooks/useMultiplayer";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
+import { GameLobby } from "@/components/game/GameLobby";
+import { MultiplayerBoard } from "@/components/game/MultiplayerBoard";
+import { InviteNotification } from "@/components/game/InviteNotification";
 import unogoLogo from "@/assets/unogo-logo.png";
-
-interface SearchResult {
-  id: string;
-  username: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  xp: number;
-}
 
 const GameFriends = () => {
   const navigate = useNavigate();
-  const { user, profile, loading } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [invitedPlayer, setInvitedPlayer] = useState<SearchResult | null>(null);
+  const [searchParams] = useSearchParams();
+  const { user, profile, loading: authLoading } = useAuth();
+  const {
+    currentGame,
+    pendingInvites,
+    isLoading,
+    createGame,
+    sendInvite,
+    acceptInvite,
+    declineInvite,
+    startGame,
+    playCard,
+    drawCard,
+    leaveGame,
+    joinGame,
+  } = useMultiplayer();
+  
+  const [view, setView] = useState<'menu' | 'lobby' | 'playing'>('menu');
 
+  // Check for join link
   useEffect(() => {
-    if (!loading && !user) {
+    const joinId = searchParams.get('join');
+    if (joinId && profile && !currentGame) {
+      joinGame(joinId);
+    }
+  }, [searchParams, profile, currentGame, joinGame]);
+
+  // Update view based on game state
+  useEffect(() => {
+    if (currentGame) {
+      if (currentGame.status === 'waiting') {
+        setView('lobby');
+      } else if (currentGame.status === 'playing') {
+        setView('playing');
+      } else if (currentGame.status === 'finished') {
+        // Stay on playing view but show winner
+      }
+    }
+  }, [currentGame?.status]);
+
+  // Auth redirect
+  useEffect(() => {
+    if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    const search = async () => {
-      if (searchQuery.length < 2) {
-        setSearchResults([]);
-        return;
-      }
-
-      setIsSearching(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, username, display_name, avatar_url, xp")
-        .ilike("username", `%${searchQuery}%`)
-        .neq("id", profile?.id)
-        .limit(10);
-
-      if (!error && data) {
-        setSearchResults(data);
-      }
-      setIsSearching(false);
-    };
-
-    const timer = setTimeout(search, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, profile?.id]);
-
-  const handleInvite = (player: SearchResult) => {
-    setInvitedPlayer(player);
-    // In a real implementation, this would send an invite
+  const handleCreateGame = async () => {
+    const gameId = await createGame();
+    if (gameId) {
+      setView('lobby');
+    }
   };
 
-  if (loading) {
+  const handleLeaveGame = () => {
+    leaveGame();
+    setView('menu');
+  };
+
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-uno-yellow" />
@@ -68,157 +80,176 @@ const GameFriends = () => {
     );
   }
 
+  // Winner screen
+  if (currentGame?.status === 'finished') {
+    const winner = currentGame.players.find(p => p.profile_id === currentGame.winner_id);
+    const isWinner = winner?.profile_id === profile?.id;
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-uno-yellow/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-uno-green/20 rounded-full blur-3xl animate-pulse" />
+        </div>
+
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", duration: 0.8 }}
+          className="relative z-10"
+        >
+          <GlassCard className="text-center max-w-md" hover={false}>
+            <motion.div
+              initial={{ y: -50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Trophy className={`w-20 h-20 mx-auto mb-4 ${isWinner ? 'text-uno-yellow' : 'text-muted-foreground'}`} />
+            </motion.div>
+
+            <h1 className="text-3xl font-bold font-nunito mb-2">
+              {isWinner ? "You Win! 🎉" : "Game Over!"}
+            </h1>
+            
+            <p className="text-muted-foreground font-nunito mb-6">
+              {isWinner 
+                ? "Congratulations! You've won the game!"
+                : `@${winner?.username} won the game!`
+              }
+            </p>
+
+            <div className="flex gap-4 justify-center">
+              <GameButton
+                variant="blue"
+                onClick={handleLeaveGame}
+                icon={<Home className="w-4 h-4" />}
+              >
+                Back to Menu
+              </GameButton>
+              <GameButton
+                variant="rainbow"
+                onClick={handleCreateGame}
+              >
+                Play Again
+              </GameButton>
+            </div>
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen py-8 px-4 relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Invite notifications - always visible */}
+      <InviteNotification
+        invites={pendingInvites}
+        onAccept={acceptInvite}
+        onDecline={declineInvite}
+      />
+
       {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-10 w-72 h-72 bg-uno-yellow/15 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-10 w-80 h-80 bg-uno-green/15 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 max-w-2xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <button
-            onClick={() => navigate("/play")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 font-nunito font-semibold"
+      {view === 'playing' && currentGame ? (
+        <MultiplayerBoard
+          game={currentGame}
+          onPlayCard={playCard}
+          onDrawCard={drawCard}
+        />
+      ) : (
+        <div className="relative z-10 py-8 px-4">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl mx-auto"
           >
-            <ArrowLeft className="w-5 h-5" />
-            Back
-          </button>
+            <button
+              onClick={() => view === 'lobby' ? handleLeaveGame() : navigate("/play")}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 font-nunito font-semibold"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              {view === 'lobby' ? 'Leave Game' : 'Back'}
+            </button>
 
-          <div className="flex justify-center mb-6">
-            <img src={unogoLogo} alt="UNOGO" className="w-40" />
-          </div>
-
-          <h1 className="text-3xl font-bold text-center mb-2 font-nunito">
-            Play With Friends
-          </h1>
-          <p className="text-muted-foreground text-center mb-8 font-nunito">
-            Search for a friend by username and invite them to play
-          </p>
-        </motion.div>
-
-        {/* Search */}
-        <GlassCard className="mb-6" hover={false}>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
-              @
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-              placeholder="Search username..."
-              className="w-full pl-8 pr-12 py-4 bg-muted rounded-xl border-2 border-transparent focus:border-accent focus:outline-none transition-all font-nunito text-lg"
-            />
-            <div className="absolute right-4 top-1/2 -translate-y-1/2">
-              {isSearching ? (
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              ) : (
-                <Search className="w-5 h-5 text-muted-foreground" />
-              )}
+            <div className="flex justify-center mb-6">
+              <img src={unogoLogo} alt="UNOGO" className="w-40" />
             </div>
-          </div>
 
-          {/* Search results */}
-          {searchResults.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {searchResults.map((player) => (
-                <motion.div
-                  key={player.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-4 p-3 bg-muted rounded-xl"
-                >
-                  {player.avatar_url ? (
-                    <img
-                      src={player.avatar_url}
-                      alt={player.username}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-uno-red to-uno-blue flex items-center justify-center">
-                      <User className="w-6 h-6 text-white" />
+            <h1 className="text-3xl font-bold text-center mb-2 font-nunito">
+              Play With Friends
+            </h1>
+          </motion.div>
+
+          {/* Content based on view */}
+          <AnimatePresence mode="wait">
+            {view === 'menu' && (
+              <motion.div
+                key="menu"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-md mx-auto mt-8"
+              >
+                <GlassCard hover={false} className="text-center">
+                  <h2 className="text-xl font-bold font-nunito mb-4">
+                    Start a Game
+                  </h2>
+                  <p className="text-muted-foreground font-nunito mb-6">
+                    Create a game lobby and invite your friends to play!
+                  </p>
+                  
+                  <GameButton
+                    variant="rainbow"
+                    size="lg"
+                    className="w-full"
+                    onClick={handleCreateGame}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      "Create Game Lobby"
+                    )}
+                  </GameButton>
+
+                  {pendingInvites.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-border">
+                      <p className="text-muted-foreground font-nunito text-sm mb-2">
+                        You have {pendingInvites.length} pending invite{pendingInvites.length > 1 ? 's' : ''}!
+                      </p>
+                      <p className="text-xs text-muted-foreground font-nunito">
+                        Check the notification in the top right corner
+                      </p>
                     </div>
                   )}
+                </GlassCard>
+              </motion.div>
+            )}
 
-                  <div className="flex-1">
-                    <p className="font-bold font-nunito">@{player.username}</p>
-                    <p className="text-muted-foreground text-sm font-nunito">
-                      {player.xp.toLocaleString()} XP
-                    </p>
-                  </div>
-
-                  <GameButton
-                    variant="green"
-                    onClick={() => handleInvite(player)}
-                    icon={<Send className="w-4 h-4" />}
-                  >
-                    Invite
-                  </GameButton>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {searchQuery.length >= 2 && searchResults.length === 0 && !isSearching && (
-            <p className="text-center text-muted-foreground mt-4 font-nunito">
-              No players found
-            </p>
-          )}
-        </GlassCard>
-
-        {/* Invited player */}
-        {invitedPlayer && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <GlassCard className="text-center" hover={false}>
-              <button
-                onClick={() => setInvitedPlayer(null)}
-                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            {view === 'lobby' && currentGame && (
+              <motion.div
+                key="lobby"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="mt-8"
               >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="animate-pulse">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-uno-yellow to-uno-green flex items-center justify-center">
-                  <Send className="w-8 h-8 text-white" />
-                </div>
-              </div>
-
-              <h3 className="text-xl font-bold mb-2 font-nunito">
-                Invite Sent!
-              </h3>
-              <p className="text-muted-foreground mb-4 font-nunito">
-                Waiting for @{invitedPlayer.username} to accept...
-              </p>
-
-              <p className="text-sm text-muted-foreground font-nunito">
-                🚧 Multiplayer coming soon!
-              </p>
-            </GlassCard>
-          </motion.div>
-        )}
-
-        {/* Coming soon notice */}
-        <motion.div
-          className="glass rounded-xl px-6 py-4 text-center mt-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <p className="text-muted-foreground text-sm font-nunito">
-            🚧 <strong className="text-foreground">Coming Soon:</strong> Real-time multiplayer with friends is under development. 
-            For now, try playing with AI!
-          </p>
-        </motion.div>
-      </div>
+                <GameLobby
+                  game={currentGame}
+                  onStartGame={() => startGame(currentGame.id)}
+                  onSendInvite={(profileId) => sendInvite(profileId, currentGame.id)}
+                  isLoading={isLoading}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 };
