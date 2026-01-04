@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_posts: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          is_pinned: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_pinned?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       card_themes: {
         Row: {
           id: string
@@ -37,6 +78,119 @@ export type Database = {
           theme_data?: Json
         }
         Relationships: []
+      }
+      challenges: {
+        Row: {
+          challenge_type: string
+          created_at: string
+          description: string
+          end_date: string | null
+          id: string
+          is_active: boolean
+          requirement_type: string
+          requirement_value: number
+          start_date: string | null
+          title: string
+          xp_reward: number
+        }
+        Insert: {
+          challenge_type: string
+          created_at?: string
+          description: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          requirement_type: string
+          requirement_value?: number
+          start_date?: string | null
+          title: string
+          xp_reward?: number
+        }
+        Update: {
+          challenge_type?: string
+          created_at?: string
+          description?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          requirement_type?: string
+          requirement_value?: number
+          start_date?: string | null
+          title?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      daily_tasks: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          requirement_value: number
+          task_type: string
+          title: string
+          valid_date: string
+          xp_reward: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          requirement_value?: number
+          task_type: string
+          title: string
+          valid_date?: string
+          xp_reward?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          requirement_value?: number
+          task_type?: string
+          title?: string
+          valid_date?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      event_rewards: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          reward_data: Json
+          reward_type: string
+          xp_required: number
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          reward_data?: Json
+          reward_type: string
+          xp_required?: number
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          reward_data?: Json
+          reward_type?: string
+          xp_required?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rewards_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "seasonal_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       friends: {
         Row: {
@@ -338,6 +492,7 @@ export type Database = {
           is_banned: boolean
           is_verified: boolean
           losses: number
+          referral_code: string | null
           selected_theme: string | null
           updated_at: string
           user_id: string
@@ -355,6 +510,7 @@ export type Database = {
           is_banned?: boolean
           is_verified?: boolean
           losses?: number
+          referral_code?: string | null
           selected_theme?: string | null
           updated_at?: string
           user_id: string
@@ -372,6 +528,7 @@ export type Database = {
           is_banned?: boolean
           is_verified?: boolean
           losses?: number
+          referral_code?: string | null
           selected_theme?: string | null
           updated_at?: string
           user_id?: string
@@ -413,6 +570,45 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referred_id: string
+          referrer_id: string
+          xp_rewarded: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_id: string
+          referrer_id: string
+          xp_rewarded?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_id?: string
+          referrer_id?: string
+          xp_rewarded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reserved_usernames: {
         Row: {
           id: string
@@ -427,6 +623,180 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      seasonal_events: {
+        Row: {
+          banner_image: string | null
+          created_at: string
+          description: string
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string
+          theme_color: string
+        }
+        Insert: {
+          banner_image?: string | null
+          created_at?: string
+          description: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date: string
+          theme_color?: string
+        }
+        Update: {
+          banner_image?: string | null
+          created_at?: string
+          description?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string
+          theme_color?: string
+        }
+        Relationships: []
+      }
+      user_challenges: {
+        Row: {
+          challenge_id: string
+          completed_at: string | null
+          created_at: string
+          current_progress: number
+          id: string
+          is_completed: boolean
+          profile_id: string
+          xp_claimed: boolean
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          id?: string
+          is_completed?: boolean
+          profile_id: string
+          xp_claimed?: boolean
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          id?: string
+          is_completed?: boolean
+          profile_id?: string
+          xp_claimed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenges_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_challenges_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_daily_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_progress: number
+          id: string
+          is_completed: boolean
+          profile_id: string
+          task_id: string
+          xp_claimed: boolean
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          id?: string
+          is_completed?: boolean
+          profile_id: string
+          task_id: string
+          xp_claimed?: boolean
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          id?: string
+          is_completed?: boolean
+          profile_id?: string
+          task_id?: string
+          xp_claimed?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_daily_tasks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_daily_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "daily_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_event_progress: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_xp: number
+          id: string
+          profile_id: string
+          rewards_claimed: Json
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_xp?: number
+          id?: string
+          profile_id: string
+          rewards_claimed?: Json
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_xp?: number
+          id?: string
+          profile_id?: string
+          rewards_claimed?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_event_progress_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "seasonal_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_event_progress_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

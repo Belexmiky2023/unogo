@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User, Trophy, Gamepad2, BadgeCheck, Loader2, Shield } from "lucide-react";
+import { ArrowLeft, User, Trophy, Gamepad2, BadgeCheck, Loader2, Shield, Gift, ListTodo } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -9,6 +9,10 @@ import { GameButton } from "@/components/ui/GameButton";
 import { FriendsList } from "@/components/friends/FriendsList";
 import { LevelProgress } from "@/components/profile/LevelProgress";
 import { ThemeSelector } from "@/components/profile/ThemeSelector";
+import { ReferralPanel } from "@/components/profile/ReferralPanel";
+import { ChallengesPanel } from "@/components/challenges/ChallengesPanel";
+import { DailyTasksPanel } from "@/components/challenges/DailyTasksPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import unogoLogo from "@/assets/unogo-logo.png";
 
 const Profile = () => {
@@ -130,10 +134,48 @@ const Profile = () => {
           </GlassCard>
         </div>
 
-        {/* Card Themes */}
-        <GlassCard className="mb-6" hover={false}>
-          <ThemeSelector />
-        </GlassCard>
+        {/* Tabs for different sections */}
+        <Tabs defaultValue="challenges" className="mb-6">
+          <TabsList className="grid grid-cols-4 w-full mb-4">
+            <TabsTrigger value="challenges" className="font-nunito text-xs sm:text-sm">
+              <Trophy className="w-4 h-4 mr-1" />
+              Challenges
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="font-nunito text-xs sm:text-sm">
+              <ListTodo className="w-4 h-4 mr-1" />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger value="referral" className="font-nunito text-xs sm:text-sm">
+              <Gift className="w-4 h-4 mr-1" />
+              Referral
+            </TabsTrigger>
+            <TabsTrigger value="themes" className="font-nunito text-xs sm:text-sm">
+              Themes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="challenges">
+            <GlassCard hover={false}>
+              <ChallengesPanel />
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="tasks">
+            <GlassCard hover={false}>
+              <DailyTasksPanel />
+            </GlassCard>
+          </TabsContent>
+
+          <TabsContent value="referral">
+            <ReferralPanel />
+          </TabsContent>
+
+          <TabsContent value="themes">
+            <GlassCard hover={false}>
+              <ThemeSelector />
+            </GlassCard>
+          </TabsContent>
+        </Tabs>
 
         {/* Friends List */}
         <GlassCard className="mb-6" hover={false}>
