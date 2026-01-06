@@ -27,6 +27,8 @@ const GameFriends = () => {
     startGame,
     playCard,
     drawCard,
+    callUno,
+    catchUno,
     leaveGame,
     joinGame,
   } = useMultiplayer();
@@ -161,6 +163,8 @@ const GameFriends = () => {
             game={currentGame}
             onPlayCard={playCard}
             onDrawCard={drawCard}
+            onCallUno={callUno}
+            onCatchUno={catchUno}
           />
           <GameChat gameId={currentGame.id} />
         </>

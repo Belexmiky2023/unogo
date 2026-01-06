@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-interface DailyTask {
+export interface DailyTask {
   id: string;
   title: string;
   description: string;
@@ -12,14 +12,20 @@ interface DailyTask {
   xp_reward: number;
   is_active: boolean;
   valid_date: string;
+  task_link?: string | null;
+  task_category?: string;
 }
 
-interface UserDailyTask {
+export interface UserDailyTask {
   id: string;
   task_id: string;
   current_progress: number;
   is_completed: boolean;
   xp_claimed: boolean;
+  submitted_at?: string | null;
+  admin_approved?: boolean;
+  approved_at?: string | null;
+  submission_data?: Record<string, unknown>;
 }
 
 export function useDailyTasks() {
@@ -90,6 +96,43 @@ export function useDailyTasks() {
     return null;
   };
 
+  // Submit a link-based task (telegram, external, etc.)
+  const submitTask = async (taskId: string, submissionData: Record<string, unknown> = {}) => {
+    if (!profile) return false;
+
+    let userTask = userTasks.find(ut => ut.task_id === taskId);
+    if (!userTask) {
+      userTask = await initializeTask(taskId);
+    }
+    if (!userTask) return false;
+
+    const { error } = await supabase
+      .from('user_daily_tasks')
+      .update({
+        submitted_at: new Date().toISOString(),
+        submission_data: submissionData,
+        current_progress: 1,
+      })
+      .eq('id', userTask.id);
+
+    if (!error) {
+      setUserTasks(prev =>
+        prev.map(ut =>
+          ut.id === userTask!.id
+            ? { ...ut, submitted_at: new Date().toISOString(), submission_data: submissionData, current_progress: 1 }
+            : ut
+        )
+      );
+
+      toast({
+        title: "Task Submitted! 📝",
+        description: "Waiting for admin approval...",
+      });
+      return true;
+    }
+    return false;
+  };
+
   // Update task progress
   const updateProgress = async (taskId: string, increment: number = 1) => {
     if (!profile) return;
@@ -136,7 +179,7 @@ export function useDailyTasks() {
     }
   };
 
-  // Claim XP reward
+  // Claim XP reward (only works for auto tasks or admin-approved tasks)
   const claimReward = async (taskId: string) => {
     if (!profile) return false;
 
@@ -145,6 +188,17 @@ export function useDailyTasks() {
 
     const task = tasks.find(t => t.id === taskId);
     if (!task) return false;
+
+    // For link-based tasks, require admin approval
+    const isLinkTask = ['telegram', 'twitter', 'discord', 'youtube', 'external_link'].includes(task.task_type);
+    if (isLinkTask && !userTask.admin_approved) {
+      toast({
+        title: "Waiting for Approval",
+        description: "This task requires admin approval before you can claim XP.",
+        variant: "destructive",
+      });
+      return false;
+    }
 
     // Update XP
     const { error: xpError } = await supabase
@@ -183,6 +237,11 @@ export function useDailyTasks() {
     return { task, progress };
   };
 
+  // Check if task is a link-based task
+  const isLinkBasedTask = (taskType: string) => {
+    return ['telegram', 'twitter', 'discord', 'youtube', 'external_link'].includes(taskType);
+  };
+
   // Calculate total available XP today
   const totalAvailableXP = tasks.reduce((sum, t) => sum + t.xp_reward, 0);
   const claimedXP = tasks.reduce((sum, t) => {
@@ -197,8 +256,10 @@ export function useDailyTasks() {
     fetchTasks,
     initializeTask,
     updateProgress,
+    submitTask,
     claimReward,
     getTaskWithProgress,
+    isLinkBasedTask,
     totalAvailableXP,
     claimedXP,
   };

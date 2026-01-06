@@ -38,6 +38,8 @@ interface DailyTask {
   xp_reward: number;
   is_active: boolean;
   valid_date: string;
+  task_link?: string | null;
+  task_category?: string;
 }
 
 interface SeasonalEvent {
@@ -376,12 +378,23 @@ export function useAdmin() {
     requirement_value: number;
     xp_reward: number;
     valid_date: string;
+    task_link?: string;
+    task_category?: string;
   }) => {
     if (!isAdmin) return false;
 
     const { error } = await supabase
       .from("daily_tasks")
-      .insert(data);
+      .insert({
+        title: data.title,
+        description: data.description,
+        task_type: data.task_type,
+        requirement_value: data.requirement_value,
+        xp_reward: data.xp_reward,
+        valid_date: data.valid_date,
+        task_link: data.task_link || null,
+        task_category: data.task_category || 'general',
+      });
 
     if (error) {
       toast({

@@ -17,9 +17,13 @@ import {
   Sparkles,
   ListTodo,
   Megaphone,
+  ClipboardCheck,
+  ExternalLink,
+  XCircle,
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAdminPosts } from "@/hooks/useAdminPosts";
+import { useAdminTasks } from "@/hooks/useAdminTasks";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { GameButton } from "@/components/ui/GameButton";
 import { Input } from "@/components/ui/input";
@@ -59,6 +63,7 @@ export function AdminPanel() {
   } = useAdmin();
 
   const { posts, createPost, deletePost, togglePin } = useAdminPosts();
+  const { pendingSubmissions, approveSubmission, rejectSubmission } = useAdminTasks();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -90,6 +95,7 @@ export function AdminPanel() {
     requirement_value: 1,
     xp_reward: 25,
     valid_date: new Date().toISOString().split('T')[0],
+    task_link: "",
   });
 
   // Post form
@@ -197,6 +203,7 @@ export function AdminPanel() {
       requirement_value: 1,
       xp_reward: 25,
       valid_date: new Date().toISOString().split('T')[0],
+      task_link: "",
     });
   };
 
@@ -246,7 +253,7 @@ export function AdminPanel() {
 
       {/* Tabs */}
       <Tabs defaultValue="users" className="space-y-4">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="users" className="font-nunito">
             <Users className="w-4 h-4 mr-2" />
             Users
@@ -258,6 +265,15 @@ export function AdminPanel() {
           <TabsTrigger value="tasks" className="font-nunito">
             <ListTodo className="w-4 h-4 mr-2" />
             Tasks
+          </TabsTrigger>
+          <TabsTrigger value="submissions" className="font-nunito relative">
+            <ClipboardCheck className="w-4 h-4 mr-2" />
+            Submissions
+            {pendingSubmissions.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-uno-red text-white text-xs rounded-full flex items-center justify-center">
+                {pendingSubmissions.length}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="posts" className="font-nunito">
             <FileText className="w-4 h-4 mr-2" />
@@ -492,6 +508,78 @@ export function AdminPanel() {
               {dailyTasks.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground font-nunito">
                   No daily tasks yet
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        </TabsContent>
+
+        {/* Submissions Tab */}
+        <TabsContent value="submissions" className="space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <ClipboardCheck className="w-5 h-5 text-uno-yellow" />
+            <h3 className="font-bold font-nunito">Pending Task Submissions</h3>
+            <span className="text-sm text-muted-foreground">
+              ({pendingSubmissions.length} pending)
+            </span>
+          </div>
+
+          <GlassCard hover={false}>
+            <div className="divide-y divide-border">
+              {pendingSubmissions.map((submission, index) => (
+                <motion.div
+                  key={submission.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex items-center justify-between p-4"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-semibold font-nunito">
+                        @{submission.profile_username}
+                      </span>
+                      <span className="text-xs bg-uno-blue/20 text-uno-blue px-2 py-0.5 rounded capitalize">
+                        {submission.task_type?.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Task: {submission.task_title}
+                    </p>
+                    {submission.submission_data && Object.keys(submission.submission_data).length > 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        {submission.submission_data.telegram_username && (
+                          <span className="flex items-center gap-1">
+                            Telegram: @{String(submission.submission_data.telegram_username)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Submitted: {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'Unknown'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => approveSubmission(submission.id)}
+                      className="p-2 rounded-lg bg-uno-green/20 hover:bg-uno-green/30 text-uno-green transition-colors"
+                      title="Approve"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => rejectSubmission(submission.id)}
+                      className="p-2 rounded-lg bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
+                      title="Reject"
+                    >
+                      <XCircle className="w-5 h-5" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+              {pendingSubmissions.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground font-nunito">
+                  No pending submissions
                 </div>
               )}
             </div>
@@ -770,6 +858,11 @@ export function AdminPanel() {
                   <SelectItem value="win_games">Win Games</SelectItem>
                   <SelectItem value="refer_friend">Refer Friend</SelectItem>
                   <SelectItem value="login">Login</SelectItem>
+                  <SelectItem value="telegram">Telegram</SelectItem>
+                  <SelectItem value="twitter">Twitter</SelectItem>
+                  <SelectItem value="discord">Discord</SelectItem>
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="external_link">External Link</SelectItem>
                 </SelectContent>
               </Select>
               <Input
@@ -779,6 +872,23 @@ export function AdminPanel() {
                 className="bg-muted border-border"
               />
             </div>
+            
+            {/* Show link field for link-based tasks */}
+            {['telegram', 'twitter', 'discord', 'youtube', 'external_link'].includes(taskForm.task_type) && (
+              <div>
+                <label className="text-sm text-muted-foreground mb-1 block flex items-center gap-1">
+                  <ExternalLink className="w-3 h-3" />
+                  Task Link URL
+                </label>
+                <Input
+                  value={taskForm.task_link}
+                  onChange={(e) => setTaskForm(f => ({ ...f, task_link: e.target.value }))}
+                  placeholder="https://t.me/..."
+                  className="bg-muted border-border"
+                />
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">Target Value</label>
