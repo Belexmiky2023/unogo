@@ -622,6 +622,103 @@ export function useMultiplayer() {
     }
   };
 
+  // Call UNO when you have one card left
+  const callUno = async () => {
+    if (!currentGame || !profile?.id) return false;
+
+    const myPlayer = currentGame.players.find(p => p.profile_id === profile.id);
+    if (!myPlayer) return false;
+
+    // Can only call UNO when you have 1 or 2 cards
+    if (myPlayer.hand.length > 2) {
+      toast({
+        title: "Can't Call UNO",
+        description: "You can only call UNO when you have 1 or 2 cards",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
+      await supabase
+        .from('game_players')
+        .update({ has_called_uno: true })
+        .eq('id', myPlayer.id);
+
+      toast({
+        title: "UNO! 🎉",
+        description: "You called UNO!",
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error calling UNO:', error);
+      return false;
+    }
+  };
+
+  // Catch a player who forgot to call UNO (they draw 2 penalty cards)
+  const catchUno = async (targetPlayerId: string) => {
+    if (!currentGame || !profile?.id) return false;
+
+    const targetPlayer = currentGame.players.find(p => p.id === targetPlayerId);
+    if (!targetPlayer) return false;
+
+    // Player must have exactly 1 card and not have called UNO
+    if (targetPlayer.hand.length !== 1 || targetPlayer.has_called_uno) {
+      toast({
+        title: "Can't Catch",
+        description: "This player either has more than one card or has already called UNO",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
+      // Draw 2 penalty cards for the caught player
+      let newDrawPile = [...currentGame.draw_pile];
+      let newDiscardPile = [...currentGame.discard_pile];
+
+      // Reshuffle if needed
+      if (newDrawPile.length < 2) {
+        const topCard = newDiscardPile.pop()!;
+        newDrawPile = shuffle(newDiscardPile);
+        newDiscardPile = [topCard];
+      }
+
+      const penaltyCards = newDrawPile.splice(0, 2);
+      const newHand = [...targetPlayer.hand, ...penaltyCards];
+
+      // Update target player's hand
+      await supabase
+        .from('game_players')
+        .update({ 
+          hand: newHand as unknown as Json,
+          has_called_uno: false,
+        })
+        .eq('id', targetPlayer.id);
+
+      // Update game draw pile
+      await supabase
+        .from('games')
+        .update({
+          draw_pile: newDrawPile as unknown as Json,
+          discard_pile: newDiscardPile as unknown as Json,
+        })
+        .eq('id', currentGame.id);
+
+      toast({
+        title: "Caught! 🚨",
+        description: `${targetPlayer.username || 'Player'} forgot to call UNO and draws 2 cards!`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error catching UNO:', error);
+      return false;
+    }
+  };
+
   // Leave game
   const leaveGame = async () => {
     if (gameChannelRef.current) {
@@ -648,6 +745,8 @@ export function useMultiplayer() {
     startGame,
     playCard,
     drawCard,
+    callUno,
+    catchUno,
     leaveGame,
     joinGame,
   };

@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, User, Crown } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Crown, AlertCircle } from "lucide-react";
 import { MultiplayerGame, GamePlayer } from "@/hooks/useMultiplayer";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardColor, canPlayCard } from "@/lib/unoCards";
 import { UnoCard } from "./UnoCard";
 import { ColorPicker } from "./ColorPicker";
 import { GameButton } from "@/components/ui/GameButton";
+import { UnoButton } from "./UnoButton";
 
 interface MultiplayerBoardProps {
   game: MultiplayerGame;
   onPlayCard: (card: Card, chosenColor?: CardColor) => void;
   onDrawCard: () => void;
+  onCallUno?: () => void;
+  onCatchUno?: (playerId: string) => void;
 }
 
-export function MultiplayerBoard({ game, onPlayCard, onDrawCard }: MultiplayerBoardProps) {
+export function MultiplayerBoard({ game, onPlayCard, onDrawCard, onCallUno, onCatchUno }: MultiplayerBoardProps) {
   const { profile } = useAuth();
   const [selectedWildCard, setSelectedWildCard] = useState<Card | null>(null);
   
@@ -79,7 +82,25 @@ export function MultiplayerBoard({ game, onPlayCard, onDrawCard }: MultiplayerBo
               )}
             </div>
             <p className="font-bold font-nunito mt-2 text-sm">@{player.username}</p>
-            <p className="text-muted-foreground text-xs font-nunito">{player.hand.length} cards</p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground text-xs font-nunito">{player.hand.length} cards</p>
+              {/* Catch UNO button - visible when opponent has 1 card and hasn't called UNO */}
+              {player.hand.length === 1 && !player.has_called_uno && onCatchUno && (
+                <button
+                  onClick={() => onCatchUno(player.id)}
+                  className="p-1 bg-uno-red text-white rounded-md text-xs font-bold animate-pulse flex items-center gap-1"
+                  title="Catch! They didn't call UNO!"
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  Catch!
+                </button>
+              )}
+              {player.has_called_uno && player.hand.length <= 2 && (
+                <span className="px-2 py-0.5 bg-uno-yellow text-black rounded-full text-xs font-bold">
+                  UNO!
+                </span>
+              )}
+            </div>
             
             {/* Face down cards */}
             <div className="flex mt-2 -space-x-6">
@@ -201,6 +222,20 @@ export function MultiplayerBoard({ game, onPlayCard, onDrawCard }: MultiplayerBo
             ))}
           </div>
         </div>
+
+        {/* UNO Call Button - show when player has 1 or 2 cards */}
+        {myPlayer && myPlayer.hand.length <= 2 && !myPlayer.has_called_uno && onCallUno && (
+          <UnoButton visible={true} onClick={onCallUno} />
+        )}
+        
+        {/* UNO Called indicator */}
+        {myPlayer?.has_called_uno && myPlayer.hand.length <= 2 && (
+          <div className="flex justify-center mt-4">
+            <span className="px-4 py-2 bg-uno-yellow text-black rounded-full font-bold font-nunito animate-pulse">
+              You called UNO! 🎉
+            </span>
+          </div>
+        )}
 
         {/* No playable cards message */}
         {isMyTurn && playableCardIds.size === 0 && (
